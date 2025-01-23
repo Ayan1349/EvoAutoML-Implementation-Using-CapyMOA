@@ -7,6 +7,7 @@ from moa.classifiers import (
     Classifier as MOA_Classifier_Interface,
     Regressor as MOA_Regressor_Interface,
 )
+from capymoa.Base import Estimator
 from moa.classifiers.predictioninterval import PredictionIntervalLearner as MOA_PredictionInterval_Interface
 from moa.classifiers.trees import (
 ARFFIMTDD as MOA_ARFFIMTDD,
@@ -112,7 +113,7 @@ def _extract_moa_learner_CLI(learner):
 ##############################################################
 
 
-class Classifier(ABC):
+class Classifier(Estimator.Estimator):
     """
     Abstract base class for machine learning classifiers.
 
@@ -170,7 +171,6 @@ class MOAClassifier(Classifier):
 
         if self.schema is not None:
             self.moa_learner.setModelContext(self.schema.get_moa_header())
-
         # If the CLI is None, we assume the object has already been configured
         # or that default values should be used.
         if self.CLI is not None:
@@ -190,6 +190,24 @@ class MOAClassifier(Classifier):
         return str(self.moa_learner.getOptions().getHelpString())
 
     def train(self, instance):
+
+        ''''print("Instance schema:", dir(instance.schema))
+        print("MOA HEADER:", instance.schema.get_moa_header())
+        print("MOA LEARNER:", self.moa_learner)
+        print("CLI:", self.CLI)
+        print("Instance:", instance)
+        print("JAVA INSTANCE:", instance.java_instance)
+        print("JAVA INSTANCE ATTRIBUTES:", dir(instance.java_instance))
+        print("INSTANCE ATTRIBUTES", dir(instance))
+        
+        # Check if java_instance is None
+        if instance.java_instance is None:
+            raise ValueError("java_instance is None")'''
+        
+        # Check if java_instance has the expected attributes
+        '''if not hasattr(instance.java_instance, 'instanceInformation'):
+            raise ValueError("java_instance is missing expected attributes")'''
+    
         self.moa_learner.trainOnInstance(instance.java_instance)
 
     def predict(self, instance):
@@ -317,7 +335,7 @@ class MOAClassifierSSL(MOAClassifier, ClassifierSSL):
 ##############################################################
 
 
-class Regressor(ABC):
+class Regressor(Estimator.Estimator):
     def __init__(self, schema=None, random_seed=1):
         self.random_seed = random_seed
         self.schema = schema

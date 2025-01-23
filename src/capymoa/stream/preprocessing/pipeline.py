@@ -2,9 +2,14 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from typing import Optional, List, Protocol, Tuple, Any, Callable
+from itertools import product
 
 import numpy as np
-
+from sklearn.model_selection import ParameterGrid
+from collections import defaultdict
+from capymoa.classifier import HoeffdingTree, HoeffdingAdaptiveTree, NaiveBayes, AdaptiveRandomForestClassifier, KNN
+from capymoa.regressor import AdaptiveRandomForestRegressor, KNNRegressor
+from moa.streams.filters import NormalisationFilter, StandardisationFilter
 from capymoa.base import Classifier, Regressor
 from capymoa.drift.base_detector import BaseDriftDetector
 from capymoa.instance import LabeledInstance, Instance, RegressionInstance
@@ -49,6 +54,10 @@ class ClassifierPipelineElement(PipelineElement):
 
         """
         self.learner = learner
+        self.available_models = {'HT',
+            'HAT',
+            'NB',
+            'KNN'}
 
     def pass_forward(self, instance: Instance) -> Instance:
         """ pass_forward
@@ -87,7 +96,38 @@ class ClassifierPipelineElement(PipelineElement):
             The transformed instance and the prediction of the classifier
 
         """
+        #print("Pass Forwardddd", instance)
         return instance, self.learner.predict(instance)
+    
+    def generate(self, param_dict=None):
+        if param_dict is None:
+            param_dict = dict()
+        per_model_parameters = defaultdict(lambda: defaultdict(list))
+
+        for k, values in param_dict.items():
+            model_name = k.split("__")[0]
+            param_name = k[len(model_name) + 2 :]
+            if model_name not in self.available_models:
+                raise Exception(f"no such model: {model_name}")
+            per_model_parameters[model_name][param_name] = values
+
+        ret = []
+        
+        for model_name, param_dict in per_model_parameters.items():
+            parameter_sets = ParameterGrid(param_dict)
+            for parameters in parameter_sets:
+                ret.append((model_name, parameters))
+
+        for model_name in self.available_models:
+            if model_name not in per_model_parameters:
+                ret.append((model_name, dict()))
+
+        return ret
+    
+    def _set_params(self, new_params: dict = {}):
+        if len(new_params) > 0:
+            self.learner = self.learner.__class__(**new_params[1])
+        return self
 
     def __str__(self):
         return "PE({})".format(str(self.learner))
@@ -171,6 +211,8 @@ class TransformerPipelineElement(PipelineElement):
 
         """
         self.transformer = transformer
+        self.available_models = {"StandardScaler",
+            "MinMaxScaler"}
 
     def pass_forward(self, instance: Instance) -> Instance:
         """ pass_forward
@@ -209,6 +251,35 @@ class TransformerPipelineElement(PipelineElement):
 
         """
         return self.transformer.transform_instance(instance), prediction
+    
+    def generate(self, param_dict=None):
+        if param_dict is None:
+            param_dict = dict()
+        per_model_parameters = defaultdict(lambda: defaultdict(list))
+
+        for k, values in param_dict.items():
+            model_name = k.split("__")[0]
+            param_name = k[len(model_name) + 2 :]
+            if model_name not in self.available_models:
+                raise Exception(f"no such model: {model_name}")
+            per_model_parameters[model_name][param_name] = values
+
+        ret = []
+
+        # create instance for cartesion product of all available parameters
+        # for each model
+        
+        for model_name, param_dict in per_model_parameters.items():
+            parameter_sets = ParameterGrid(param_dict)
+            for parameters in parameter_sets:
+                ret.append((model_name, parameters))
+
+        # for every model that has no specified parameters, add default value
+        for model_name in self.available_models:
+            if model_name not in per_model_parameters:
+                ret.append((model_name, dict()))
+
+        return ret
 
     def __str__(self):
         return "PE({})".format(str(self.transformer))
@@ -290,18 +361,31 @@ class BasePipeline(PipelineElement):
     The base class for other types of pipelines. Supports transformers and drift detectors.
     """
 
-    def __init__(self, pipeline_elements: List[PipelineElement] | None = None):
+    def __init__(self, model_list, pipeline_elements: List[PipelineElement] | None = None):
         """ __init__
 
         Initializes the base pipeline with a list of pipeline elements.
 
         Parameters
         ----------
+        model_list
         pipeline_elements: List[PipelineElement]
             The elements the pipeline consists of
 
         """
         self.elements: List[PipelineElement] = [] if pipeline_elements is None else pipeline_elements
+        '''self.learner = next(
+            (element.learner for element in self.elements if isinstance(
+                element, (ClassifierPipelineElement, RegressorPipelineElement)
+            )),
+            None  # Default to None if no matching element is found
+        )
+        for element in self.elements:
+            if isinstance(element, (ClassifierPipelineElement, RegressorPipelineElement)):
+                print("ELEMENT LEARNER:",element.learner.__class__)
+        print("LEARNER BASEPIPELINE:",self.learner.__class__)'''
+        self.model_list = model_list
+        self.schema = self.elements[0].transformer.get_schema()
 
     def add_pipeline_element(self, element: PipelineElement):
         """ add_pipeline_element
@@ -420,6 +504,25 @@ class BasePipeline(PipelineElement):
             s += str(element)
             s += " | "
         return s
+    
+    def _set_params(self, schema, model_list, new_params: dict = {}):
+        '''if len(new_params) > 0:
+            self.learner = self.learner.__class__(**new_params[1])'''
+        '''elif self.learner is None:
+            self.learner = self.available_models[
+                random.choice(list(self.available_models))
+            ]'''
+        model_dict = dict(self.model_list)
+        if len(new_params) > 0:
+            self.selected_model = model_dict[
+                new_params['Classifier'][0]
+            ]
+            self.selected_model.__class__(schema=schema, **new_params['Classifier'][1])
+        elif self.selected_model is None:
+            self.selected_model = model_dict[
+                random.choice(list(model_dict))
+            ]
+        return self
 
 
 class ClassifierPipeline(BasePipeline, Classifier):
@@ -478,6 +581,7 @@ class ClassifierPipeline(BasePipeline, Classifier):
             The prediction of the pipeline
 
         """
+
         inst, pred = self.pass_forward_predict(instance)
         return pred
 

@@ -77,7 +77,6 @@ class MOATransformer(Transformer):
         if self._last_instance == instance:
             return self._last_transformed_instance
         self._last_instance = instance
-
         self.filtered_stream.moa_stream.addToQueue(instance.java_instance.instance)
         new_instance = self.filtered_stream.next_instance()
 
