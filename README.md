@@ -1,52 +1,62 @@
-# [CapyMOA](https://capymoa.org)
+```markdown
+# EvoAutoML Implementation Using CapyMOA
 
-![Banner Image](https://github.com/adaptive-machine-learning/CapyMOA/raw/main/docs/images/CapyMOA.jpeg)
-
-[![PyPi Version](https://img.shields.io/pypi/v/capymoa)](https://pypi.org/project/capymoa/)
-[![Join the Discord](https://img.shields.io/discord/1235780483845984367?label=Discord)](https://discord.gg/spd2gQJGAb)
-[![Documentation](https://img.shields.io/badge/docs-latest-blue)](https://capymoa.org)
-[![GitHub](https://img.shields.io/github/stars/adaptive-machine-learning/CapyMOA?style=social)](https://github.com/adaptive-machine-learning/CapyMOA)
-
-
-Machine learning library tailored for data streams. Featuring a Python API
-tightly integrated with MOA (**Stream Learners**), PyTorch (**Neural
-Networks**), and scikit-learn (**Machine Learning**). CapyMOA provides a
-**fast** python interface to leverage the state-of-the-art algorithms in the
-field of data streams.
-
-To setup CapyMOA, simply install it via pip. If you have any issues with the
-installation (like not having Java installed) or if you want GPU support, please
-refer to the [installation guide](https://capymoa.org/installation). Once installed take a
-look at the [tutorials](https://capymoa.org/tutorials.html) to get started.
-
-```bash
-# CapyMOA requires Java. This checks if you have it installed
-java -version
-
-# CapyMOA requires PyTorch. This installs the CPU version
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
-
-# Install CapyMOA and its dependencies
-pip install capymoa
-
-# Check that the install worked
-python -c "import capymoa; print(capymoa.__version__)"
-```
-
-> **⚠️ WARNING**
->
-> CapyMOA is still in the early stages of development. The API is subject to
-> change until version 1.0.0. If you encounter any issues, please report
-> them in [GitHub Issues](https://github.com/adaptive-machine-learning/CapyMOA/issues)
-> or talk to us on [Discord](https://discord.gg/spd2gQJGAb).
+This repository contains an implementation of the EvoAutoML algorithm using the CapyMOA framework. The original source code is available on https://github.com/kulbachcedric/EvOAutoML.git. The primary focus of this project is on classification tasks, with experiments conducted on the Covtype dataset. The implementation can be extended to other datasets and models by modifying the parameter grid and dataset configurations.
 
 ---
 
-![Benchmark Image](https://github.com/adaptive-machine-learning/CapyMOA/raw/main/docs/images/arf100_cpu_time.png)
-Benchmark comparing CapyMOA against other data stream libraries. The benchmark
-was performed using an ensemble of 100 ARF learners trained on
-`capymoa.datasets.RTG_2abrupt` dataset containing 100,000 samples and 30
-features.  You can find the code to reproduce this benchmark in
-[`notebooks/benchmarking.py`](https://github.com/adaptive-machine-learning/CapyMOA/blob/main/notebooks/benchmarking.py).
-*CapyMOA has the speed of MOA with the flexibility of Python and the richness of
-Python's data science ecosystem.*
+## Prerequisites
+
+- Python 3.11 or higher
+- Conda for virtual environment management
+
+---
+
+## Running the Code
+
+1. **Run the Script**:  
+   Use the provided `run.py` file to execute the EvoAutoML pipeline. Before running the script, make sure to modify the `project_dir` path in the `run.py` file to point to the `capymoa` folder inside the `src` directory of this repository. This ensures that all necessary packages are correctly imported.  Modify suitably the name of the dataset, list of models to be used to build the pipeline, and list of corresponding parameters.
+
+2. **Output**:  
+   - The script processes the specified number of instances of the specified dataset.  
+   - Accuracy is recorded and plotted against the number of processed instances.  
+   - The total execution time is displayed as a bar plot.
+
+--- 
+
+## Features
+
+- **Classification Tasks**: Currently implemented for classification using the Covtype dataset.
+- **Extensibility**: The dataset and models in the parameter grid can be customized as required.
+- **CapyMOA Integration**: The CapyMOA package is used in editable mode, and relevant modifications have been made to both CapyMOA and EvoAutoML to ensure seamless execution.
+- **Pipeline Definition**: Flexible pipelines with support for:
+  - Data preprocessing using transformers like `StandardisationFilter` and `NormalisationFilter`.
+  - Multiple classifiers such as `HoeffdingTree`, `HoeffdingAdaptiveTree`, `NaiveBayes`, and `KNN`.
+- **Hyperparameter Tuning**: An evolutionary algorithm is used to select optimal models and hyperparameters dynamically.
+- **Visualization**: Includes:
+  - Accuracy vs Number of Instances Plot.
+  - Execution Time Bar Plot.
+
+---
+
+## Modifications
+
+   - CapyMOA\src -> Added EvoAutoML folder 
+   - CapyMOA\src\capymoa\base -> Added Baseclass.py, Estimator.py, Ensemble.py and Wrapper.py to define a Base class, Estimator class (parent class of all estimators) and Ensemble class (code adapted from River source code available on https://github.com/online-ml/river.git)
+   - CapyMOA\src\capymoa\stream\preprocessing -> Modifications in pipeline.py and transformer.py
+   - CapyMOA\src\capymoa\jar -> Added sizeofag-1.0.0.jar file to handle errors with respect to MOA 
+
+---
+
+## Future Work
+
+- Extend support to regression tasks.
+- Explore additional datasets and classification algorithms.
+- Optimize the mutation operation for improved pipeline generation.
+
+
+## Acknowledgments
+
+- The authors of the EvoAutoML paper for the original implementation.
+- The developers of the CapyMOA framework for their comprehensive API for MOA integration in Python.
+```
